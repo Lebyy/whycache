@@ -1,6 +1,9 @@
 name: Turborepo canary
 
 on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/canary.yml]
   workflow_dispatch:
   schedule:
     - cron: "41 4 * * 2"
