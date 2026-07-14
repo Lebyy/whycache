@@ -32,8 +32,9 @@ Releases are tag-driven and must start from a clean `main` branch.
    npm pack --dry-run ./npm/whycache
    ```
 
-5. Commit the version change, create the matching `vX.Y.Z` tag, and push the commit and tag.
+5. Dispatch the Release workflow from `main` to build and inspect all five native archives without publishing them.
+6. Commit the version change, create the matching `vX.Y.Z` tag, and push the commit and tag.
 
-The release workflow builds five native archives, generates checksums, smoke-tests the npm launcher with the Linux binary, creates the GitHub release, and publishes Cargo and npm packages from the protected `release` environment. Configure npm trusted publishing or `NPM_TOKEN`, plus `CARGO_REGISTRY_TOKEN`, before pushing the first tag.
+The release workflow builds five native archives, generates checksums, smoke-tests the npm launcher with the Linux binary, creates the GitHub release, and publishes Cargo and npm packages from the protected `release` environment. Configure npm trusted publishing or `NPM_TOKEN`, plus `CARGO_REGISTRY_TOKEN`, before pushing the first tag. Registry steps are idempotent, so rerunning a partially completed release verifies and skips versions that already exist.
 
 Never rerun a partially published version. Correct the failure and publish a new patch version because npm, crates.io, and GitHub release artifacts are immutable distribution records.
