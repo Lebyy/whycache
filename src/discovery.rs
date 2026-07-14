@@ -376,11 +376,15 @@ mod tests {
 
     #[test]
     fn resolves_windows_native_turbo_without_a_shell() {
-        let candidates = local_turbo_candidates(Path::new("C:/repo"), "windows", "x86_64");
-        assert!(
-            candidates[0]
-                .to_string_lossy()
-                .ends_with("node_modules/@turbo/windows-64/bin/turbo.exe")
+        let root = Path::new("C:/repo");
+        let candidates = local_turbo_candidates(root, "windows", "x86_64");
+        assert_eq!(
+            candidates[0],
+            root.join("node_modules")
+                .join("@turbo")
+                .join("windows-64")
+                .join("bin")
+                .join("turbo.exe")
         );
     }
 

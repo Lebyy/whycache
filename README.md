@@ -98,11 +98,11 @@ WhyCache requires Rust 1.85 or newer when building from source.
 
 | Operating system | Architecture | npm package | Release asset |
 |---|---:|---|---|
-| Linux | x86-64 | `@whycache/linux-x64` | `linux-x64` |
-| Linux | ARM64 | `@whycache/linux-arm64` | `linux-arm64` |
-| macOS | Apple Silicon | `@whycache/darwin-arm64` | `darwin-arm64` |
-| macOS | Intel | `@whycache/darwin-x64` | `darwin-x64` |
-| Windows | x86-64 | `@whycache/win32-x64` | `win32-x64` |
+| Linux | x86-64 | `whycache-linux-x64` | `linux-x64` |
+| Linux | ARM64 | `whycache-linux-arm64` | `linux-arm64` |
+| macOS | Apple Silicon | `whycache-darwin-arm64` | `darwin-arm64` |
+| macOS | Intel | `whycache-darwin-x64` | `darwin-x64` |
+| Windows | x86-64 | `whycache-win32-x64` | `win32-x64` |
 
 ## ⚡ Quick start
 

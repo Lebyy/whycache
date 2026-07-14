@@ -124,8 +124,8 @@ jobs:
           cp unpacked/win32-x64/whycache.exe npm/platform/win32-x64/bin/whycache.exe
       - name: Smoke-test the npm launcher
         run: |
-          mkdir -p npm/whycache/node_modules/@whycache
-          cp -R npm/platform/linux-x64 npm/whycache/node_modules/@whycache/linux-x64
+          mkdir -p npm/whycache/node_modules
+          cp -R npm/platform/linux-x64 npm/whycache/node_modules/whycache-linux-x64
           node npm/whycache/bin/whycache.js --version
       - name: Publish platform packages
         run: |

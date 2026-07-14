@@ -1,5 +1,5 @@
 {
-  "name": "@whycache/linux-arm64",
+  "name": "whycache-linux-arm64",
   "version": "0.1.0",
   "description": "WhyCache native binary for Linux ARM64",
   "license": "MIT OR Apache-2.0",

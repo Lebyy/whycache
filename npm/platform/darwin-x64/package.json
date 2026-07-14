@@ -1,5 +1,5 @@
 {
-  "name": "@whycache/darwin-x64",
+  "name": "whycache-darwin-x64",
   "version": "0.1.0",
   "description": "WhyCache native binary for macOS Intel",
   "license": "MIT OR Apache-2.0",

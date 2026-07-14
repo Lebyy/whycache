@@ -30,10 +30,10 @@
     "node": ">=18"
   },
   "optionalDependencies": {
-    "@whycache/darwin-arm64": "0.1.0",
-    "@whycache/darwin-x64": "0.1.0",
-    "@whycache/linux-arm64": "0.1.0",
-    "@whycache/linux-x64": "0.1.0",
-    "@whycache/win32-x64": "0.1.0"
+    "whycache-darwin-arm64": "0.1.0",
+    "whycache-darwin-x64": "0.1.0",
+    "whycache-linux-arm64": "0.1.0",
+    "whycache-linux-x64": "0.1.0",
+    "whycache-win32-x64": "0.1.0"
   }
 }

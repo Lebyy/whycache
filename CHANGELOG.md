@@ -21,3 +21,4 @@ All notable changes will be documented here. The project follows Semantic Versio
 
 - Updated every direct Rust dependency to its current stable registry release.
 - Expanded the GitHub and npm README into a complete installation, usage, evidence, CI, compatibility, privacy, architecture, development, and release guide.
+- Use unscoped native npm helper packages so publishing does not require an npm organization.

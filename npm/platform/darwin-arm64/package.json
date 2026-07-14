@@ -1,5 +1,5 @@
 {
-  "name": "@whycache/darwin-arm64",
+  "name": "whycache-darwin-arm64",
   "version": "0.1.0",
   "description": "WhyCache native binary for macOS Apple Silicon",
   "license": "MIT OR Apache-2.0",

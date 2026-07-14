@@ -5,11 +5,11 @@
 const { spawnSync } = require("node:child_process");
 
 const targets = {
-  "darwin-arm64": "@whycache/darwin-arm64",
-  "darwin-x64": "@whycache/darwin-x64",
-  "linux-arm64": "@whycache/linux-arm64",
-  "linux-x64": "@whycache/linux-x64",
-  "win32-x64": "@whycache/win32-x64"
+  "darwin-arm64": "whycache-darwin-arm64",
+  "darwin-x64": "whycache-darwin-x64",
+  "linux-arm64": "whycache-linux-arm64",
+  "linux-x64": "whycache-linux-x64",
+  "win32-x64": "whycache-win32-x64"
 };
 
 const target = `${process.platform}-${process.arch}`;
