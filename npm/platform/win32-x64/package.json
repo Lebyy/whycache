@@ -1,5 +1,5 @@
 {
-  "name": "whycache-win32-x64",
+  "name": "whycache-windows-x64",
   "version": "0.1.0",
   "description": "WhyCache native binary for Windows x86-64",
   "license": "MIT OR Apache-2.0",

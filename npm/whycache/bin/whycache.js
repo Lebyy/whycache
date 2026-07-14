@@ -9,7 +9,7 @@ const targets = {
   "darwin-x64": "whycache-darwin-x64",
   "linux-arm64": "whycache-linux-arm64",
   "linux-x64": "whycache-linux-x64",
-  "win32-x64": "whycache-win32-x64"
+  "win32-x64": "whycache-windows-x64"
 };
 
 const target = `${process.platform}-${process.arch}`;
