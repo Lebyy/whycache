@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 620" role="img" aria-labelledby="title desc">
+  <title id="title">WhyCache architecture</title>
+  <desc id="desc">WhyCache discovers Turborepo summaries, parses and normalizes them, compares evidence, ranks causes, and renders local reports.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1440" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08101f"/>
+      <stop offset="1" stop-color="#10182c"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#67e8f9"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#53627b"/>
+    </marker>
+  </defs>
+
+  <rect width="1440" height="620" rx="34" fill="url(#background)"/>
+  <circle cx="1350" cy="68" r="210" fill="#7c3aed" opacity=".08"/>
+  <circle cx="80" cy="590" r="220" fill="#06b6d4" opacity=".06"/>
+
+  <text x="72" y="78" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui" font-size="32" font-weight="700">From cache miss to concrete evidence</text>
+  <text x="72" y="112" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui" font-size="18">One local Rust process. No service, account, telemetry, or source upload.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="72" y="170" width="220" height="250" rx="24" fill="#111c31" stroke="#2b3a55"/>
+    <rect x="322" y="170" width="220" height="250" rx="24" fill="#111c31" stroke="#2b3a55"/>
+    <rect x="572" y="170" width="220" height="250" rx="24" fill="#111c31" stroke="#2b3a55"/>
+    <rect x="822" y="170" width="220" height="250" rx="24" fill="#111c31" stroke="#2b3a55"/>
+    <rect x="1072" y="170" width="296" height="250" rx="24" fill="#111c31" stroke="#2b3a55"/>
+  </g>
+
+  <g fill="none" stroke="#53627b" stroke-width="3" marker-end="url(#arrow)">
+    <path d="M292 295h25"/>
+    <path d="M542 295h25"/>
+    <path d="M792 295h25"/>
+    <path d="M1042 295h25"/>
+  </g>
+
+  <g font-family="Inter, ui-sans-serif, system-ui">
+    <g transform="translate(96 198)">
+      <circle cx="24" cy="24" r="24" fill="#164e63"/>
+      <path d="M14 17h20v17H14zM18 13h12v4H18z" fill="none" stroke="#67e8f9" stroke-width="2.5" stroke-linejoin="round"/>
+      <text y="88" fill="#f8fafc" font-size="22" font-weight="700">Discover</text>
+      <text y="120" fill="#94a3b8" font-size="15">Find turbo.json and</text>
+      <text y="144" fill="#94a3b8" font-size="15">saved run summaries.</text>
+      <rect y="174" width="166" height="34" rx="10" fill="#0b1324"/>
+      <text x="14" y="196" fill="#67e8f9" font-family="ui-monospace, monospace" font-size="13">.turbo/runs/*.json</text>
+    </g>
+
+    <g transform="translate(346 198)">
+      <circle cx="24" cy="24" r="24" fill="#312e81"/>
+      <path d="m15 16 9-5 9 5v16l-9 5-9-5zM15 16l9 5 9-5M24 21v16" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linejoin="round"/>
+      <text y="88" fill="#f8fafc" font-size="22" font-weight="700">Normalize</text>
+      <text y="120" fill="#94a3b8" font-size="15">Accept Turbo 1.9 and</text>
+      <text y="144" fill="#94a3b8" font-size="15">current v2 schemas.</text>
+      <rect y="174" width="166" height="34" rx="10" fill="#0b1324"/>
+      <text x="14" y="196" fill="#a78bfa" font-family="ui-monospace, monospace" font-size="13">schema 0 + schema 1</text>
+    </g>
+
+    <g transform="translate(596 198)">
+      <circle cx="24" cy="24" r="24" fill="#1e3a5f"/>
+      <path d="M13 16h22M13 24h14M13 32h18" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round"/>
+      <text y="88" fill="#f8fafc" font-size="22" font-weight="700">Compare</text>
+      <text y="120" fill="#94a3b8" font-size="15">Diff files, env, config,</text>
+      <text y="144" fill="#94a3b8" font-size="15">lockfiles, and upstreams.</text>
+      <rect y="174" width="166" height="34" rx="10" fill="#0b1324"/>
+      <text x="14" y="196" fill="#60a5fa" font-family="ui-monospace, monospace" font-size="13">before → after</text>
+    </g>
+
+    <g transform="translate(846 198)">
+      <circle cx="24" cy="24" r="24" fill="#064e3b"/>
+      <path d="M14 34V22m10 12V14m10 20V18" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round"/>
+      <text y="88" fill="#f8fafc" font-size="22" font-weight="700">Diagnose</text>
+      <text y="120" fill="#94a3b8" font-size="15">Rank direct causes before</text>
+      <text y="144" fill="#94a3b8" font-size="15">downstream cascades.</text>
+      <rect y="174" width="166" height="34" rx="10" fill="#0b1324"/>
+      <text x="14" y="196" fill="#34d399" font-family="ui-monospace, monospace" font-size="13">98% · 95% · 90%</text>
+    </g>
+
+    <g transform="translate(1096 198)">
+      <circle cx="24" cy="24" r="24" fill="#4c1d3b"/>
+      <path d="M14 15h20v18H14zM18 20h12M18 25h12M18 30h8" fill="none" stroke="#f9a8d4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text y="88" fill="#f8fafc" font-size="22" font-weight="700">Explain</text>
+      <text y="120" fill="#94a3b8" font-size="15">Render the same evidence model</text>
+      <text y="144" fill="#94a3b8" font-size="15">for people, CI, and tooling.</text>
+      <g transform="translate(0 174)">
+        <rect width="67" height="34" rx="10" fill="#0b1324"/>
+        <rect x="76" width="67" height="34" rx="10" fill="#0b1324"/>
+        <rect x="152" width="67" height="34" rx="10" fill="#0b1324"/>
+        <text x="15" y="22" fill="#f9a8d4" font-family="ui-monospace, monospace" font-size="13">human</text>
+        <text x="93" y="22" fill="#f9a8d4" font-family="ui-monospace, monospace" font-size="13">JSON</text>
+        <text x="176" y="22" fill="#f9a8d4" font-family="ui-monospace, monospace" font-size="13">MD</text>
+      </g>
+    </g>
+  </g>
+
+  <rect x="72" y="478" width="1296" height="82" rx="20" fill="#0b1324" stroke="#24324a"/>
+  <path d="M108 518h18l8-14 14 28 9-14h18" fill="none" stroke="url(#accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="204" y="514" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui" font-size="18" font-weight="700">Deterministic by design</text>
+  <text x="204" y="540" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui" font-size="15">Identical summaries produce identical ordering, confidence, evidence, and machine output.</text>
+  <text x="1110" y="527" fill="#67e8f9" font-family="ui-monospace, monospace" font-size="15">100% offline</text>
+</svg>
