@@ -1,0 +1,61 @@
+{
+  "id": "baseline-run",
+  "version": "1",
+  "turboVersion": "2.9.15",
+  "monorepo": true,
+  "globalCacheInputs": {
+    "rootKey": "root-a",
+    "files": {"turbo.json": "turbo-a"},
+    "hashOfExternalDependencies": "deps-a",
+    "hashOfInternalDependencies": "internal-a",
+    "environmentVariables": {
+      "specified": {"env": ["CI"], "passThroughEnv": []},
+      "configured": ["CI=ci-a"],
+      "inferred": [],
+      "passthrough": null
+    },
+    "engines": {"node": ">=20"}
+  },
+  "execution": {"exitCode": 0},
+  "tasks": [
+    {
+      "taskId": "web#build",
+      "task": "build",
+      "package": "web",
+      "hash": "1111111111111111",
+      "inputs": {
+        "apps/web/package.json": "package-a",
+        "apps/web/src/index.ts": "source-a"
+      },
+      "hashOfExternalDependencies": "task-deps-a",
+      "cache": {"status": "HIT", "local": true, "remote": false},
+      "command": "next build",
+      "outputs": [".next/**"],
+      "excludedOutputs": [],
+      "logFile": ".turbo/turbo-build.log",
+      "directory": "apps/web",
+      "dependencies": ["ui#build"],
+      "dependents": [],
+      "resolvedTaskDefinition": {"outputs": [".next/**"], "cache": true},
+      "environmentVariables": {
+        "specified": {"env": ["NODE_ENV"], "passThroughEnv": []},
+        "configured": ["NODE_ENV=env-a"],
+        "inferred": [],
+        "passthrough": null
+      },
+      "execution": {"exitCode": 0}
+    },
+    {
+      "taskId": "ui#build",
+      "task": "build",
+      "package": "ui",
+      "hash": "upstream-a",
+      "inputs": {"packages/ui/src/button.tsx": "button-a"},
+      "cache": {"status": "HIT"},
+      "dependencies": [],
+      "dependents": ["web#build"],
+      "outputs": ["dist/**"]
+    }
+  ],
+  "scm": {"sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+}

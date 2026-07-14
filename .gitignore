@@ -1,0 +1,7 @@
+/target/
+/.whycache/
+**/node_modules/
+tests/fixtures/canary/.turbo/
+tests/fixtures/canary/packages/app/dist/
+.DS_Store
+*.profraw

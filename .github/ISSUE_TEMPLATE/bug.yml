@@ -1,0 +1,40 @@
+name: Bug report
+description: Report an incorrect diagnosis, parser failure, or CLI defect.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Remove secrets and private paths from every summary before attaching it.
+  - type: input
+    id: version
+    attributes:
+      label: WhyCache version
+      placeholder: whycache 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: turbo
+    attributes:
+      label: Turborepo version
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Linux, macOS, Windows]
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Reproduction and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected diagnosis
+    validations:
+      required: true

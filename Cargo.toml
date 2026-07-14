@@ -1,0 +1,35 @@
+[package]
+name = "whycache"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Lebyy/whycache"
+homepage = "https://github.com/Lebyy/whycache"
+description = "Explain why a Turborepo task missed the cache"
+keywords = ["turborepo", "cache", "debugging", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+include = [
+  "/src/**",
+  "/tests/**",
+  "/Cargo.toml",
+  "/README.md",
+  "/CHANGELOG.md",
+  "/CONTRIBUTING.md",
+  "/SECURITY.md",
+  "/assets/**",
+  "/docs/**",
+  "/LICENSE-APACHE",
+  "/LICENSE-MIT",
+]
+
+[dependencies]
+clap = { version = "4.5.41", features = ["derive"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.141"
+thiserror = "2.0.12"
+
+[dev-dependencies]
+tempfile = "3.20.0"
+
+[workspace]

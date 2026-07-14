@@ -1,0 +1,35 @@
+name: Turborepo canary
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 4 * * 2"
+
+permissions:
+  contents: read
+
+jobs:
+  latest-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - name: Create real summaries with the latest Turborepo
+        working-directory: tests/fixtures/canary
+        run: |
+          npm install --ignore-scripts
+          npx turbo run build --summarize
+          printf 'changed\n' > packages/app/input.txt
+          npx turbo run build --summarize
+      - name: Verify WhyCache can diagnose the current schema
+        run: |
+          cargo run --quiet -- build --json --repo tests/fixtures/canary > canary-report.json
+          node -e '
+            const report = require("./canary-report.json");
+            if (!report.tasks.some(task => task.classification === "root_cause")) {
+              throw new Error("WhyCache did not find the canary input change");
+            }
+          '

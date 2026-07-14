@@ -1,0 +1,40 @@
+{
+  "name": "whycache",
+  "version": "0.1.0",
+  "description": "Explain exactly why a Turborepo task missed the cache",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lebyy/whycache.git"
+  },
+  "homepage": "https://github.com/Lebyy/whycache#readme",
+  "bugs": "https://github.com/Lebyy/whycache/issues",
+  "keywords": [
+    "turborepo",
+    "turbo",
+    "cache",
+    "monorepo",
+    "debugging",
+    "cli"
+  ],
+  "bin": {
+    "whycache": "bin/whycache.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "assets",
+    "LICENSE-APACHE",
+    "LICENSE-MIT"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@whycache/darwin-arm64": "0.1.0",
+    "@whycache/darwin-x64": "0.1.0",
+    "@whycache/linux-arm64": "0.1.0",
+    "@whycache/linux-x64": "0.1.0",
+    "@whycache/win32-x64": "0.1.0"
+  }
+}

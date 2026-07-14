@@ -1,0 +1,8 @@
+{
+  "name": "whycache-canary",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "devDependencies": {
+    "turbo": "latest"
+  }
+}

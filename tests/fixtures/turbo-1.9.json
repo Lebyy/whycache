@@ -1,0 +1,26 @@
+{
+  "id": "legacy",
+  "version": "1",
+  "turboVersion": "1.9.9",
+  "globalCacheInputs": {
+    "files": {},
+    "hashOfExternalDependencies": "external",
+    "environmentVariables": {
+      "specified": {"env": [], "passThroughEnv": null},
+      "configured": [],
+      "inferred": []
+    }
+  },
+  "tasks": [
+    {
+      "taskId": "app#build",
+      "task": "build",
+      "package": "app",
+      "hash": "legacy-hash",
+      "inputs": {},
+      "cache": {"local": false, "remote": false, "status": "MISS"},
+      "dependencies": [],
+      "dependents": []
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "@whycache/linux-x64",
+  "version": "0.1.0",
+  "description": "WhyCache native binary for Linux x86-64",
+  "license": "MIT OR Apache-2.0",
+  "repository": "github:Lebyy/whycache",
+  "os": ["linux"],
+  "cpu": ["x64"],
+  "files": ["bin", "LICENSE-APACHE", "LICENSE-MIT"]
+}
