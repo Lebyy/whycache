@@ -8,6 +8,6 @@ Top-level fields:
 - `tasks`: diagnoses ordered by task id;
 - `warnings`: compatibility and enrichment warnings in discovery order.
 
-Each task contains its cache status, hashes, classification, ranked causes, hints, and optional Git statistics. Every cause includes a stable `kind`, a human summary, integer confidence from 0 through 100, and concrete evidence.
+Each task contains its cache status, hashes, classification, ranked causes, unchanged-input counts, hints, and optional Git statistics. Every cause includes a stable `kind`, a human summary, integer confidence from 0 through 100, and concrete evidence.
 
 Consumers should ignore unknown fields and branch on `schemaVersion` before relying on changed semantics.

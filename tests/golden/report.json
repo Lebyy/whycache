@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "1",
+  "baseline": {
+    "path": "tests/fixtures/repo/.turbo/runs/a-baseline.json",
+    "id": "baseline-run",
+    "schemaVersion": "1",
+    "turboVersion": "2.9.15",
+    "commitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "current": {
+    "path": "tests/fixtures/repo/.turbo/runs/z-current.json",
+    "id": "current-run",
+    "schemaVersion": "1",
+    "turboVersion": "2.9.15",
+    "commitSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "tasks": [
+    {
+      "taskId": "ui#build",
+      "package": "ui",
+      "task": "build",
+      "cacheStatus": "miss",
+      "baselineHash": "upstream-a",
+      "currentHash": "upstream-b",
+      "classification": "root_cause",
+      "causes": [
+        {
+          "kind": "input_file",
+          "summary": "1 task input file(s) changed",
+          "confidence": 95,
+          "evidence": [
+            {
+              "source": "packages/ui/src/button.tsx",
+              "before": "button-a",
+              "after": "button-b",
+              "detail": "File content fingerprint changed."
+            }
+          ]
+        }
+      ],
+      "unchanged": {
+        "files": 0,
+        "environmentVariables": 1,
+        "turboJson": true,
+        "taskConfiguration": true
+      },
+      "hints": []
+    },
+    {
+      "taskId": "web#build",
+      "package": "web",
+      "task": "build",
+      "cacheStatus": "miss",
+      "baselineHash": "1111111111111111",
+      "currentHash": "2222222222222222",
+      "classification": "root_cause",
+      "causes": [
+        {
+          "kind": "environment",
+          "summary": "1 environment fingerprint(s) changed",
+          "confidence": 98,
+          "evidence": [
+            {
+              "source": "NODE_ENV",
+              "before": "env-a",
+              "after": "env-b",
+              "detail": "Only the variable name and Turborepo fingerprint are shown; values are never recorded by WhyCache."
+            }
+          ]
+        },
+        {
+          "kind": "input_file",
+          "summary": "1 task input file(s) changed",
+          "confidence": 95,
+          "evidence": [
+            {
+              "source": "apps/web/src/index.ts",
+              "before": "source-a",
+              "after": "source-b",
+              "detail": "File content fingerprint changed."
+            }
+          ]
+        },
+        {
+          "kind": "upstream_task",
+          "summary": "1 upstream task hash(es) changed",
+          "confidence": 90,
+          "evidence": [
+            {
+              "source": "ui#build",
+              "before": "upstream-a",
+              "after": "upstream-b",
+              "detail": "This dependency changed first; the current task inherited its hash change."
+            }
+          ]
+        }
+      ],
+      "unchanged": {
+        "files": 0,
+        "environmentVariables": 1,
+        "turboJson": true,
+        "taskConfiguration": true
+      },
+      "hints": [
+        "Keep task-affecting variables in `env` or `globalEnv`; avoid broad wildcard inputs when possible."
+      ]
+    }
+  ],
+  "warnings": []
+}

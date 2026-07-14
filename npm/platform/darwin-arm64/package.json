@@ -3,8 +3,19 @@
   "version": "0.1.0",
   "description": "WhyCache native binary for macOS Apple Silicon",
   "license": "MIT OR Apache-2.0",
-  "repository": "github:Lebyy/whycache",
-  "os": ["darwin"],
-  "cpu": ["arm64"],
-  "files": ["bin", "LICENSE-APACHE", "LICENSE-MIT"]
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lebyy/whycache.git"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin",
+    "LICENSE-APACHE",
+    "LICENSE-MIT"
+  ]
 }

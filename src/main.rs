@@ -1,14 +1,23 @@
+mod cli;
+mod diagnosis;
+mod discovery;
+mod error;
+mod git;
+mod model;
+mod parser;
+mod render;
+
 use std::io::{self, IsTerminal, Write};
 
 use clap::Parser;
 
-use whycache::{
+use crate::{
     cli::Cli,
     diagnosis::analyze,
     discovery::{Discovery, LoadResult},
     error::Result,
     git::enrich_with_git,
-    render::{self, Format, render},
+    render::{Format, render},
 };
 
 fn main() {
@@ -26,6 +35,9 @@ fn run() -> Result<()> {
     match discovery.load(&cli)? {
         LoadResult::Ready(pair) => {
             let mut report = analyze(*pair, cli.task.as_deref());
+            if let Some(task) = cli.task.as_deref().filter(|_| report.tasks.is_empty()) {
+                return Err(error::Error::TaskNotFound(task.to_owned()));
+            }
             if cli.git {
                 enrich_with_git(&discovery.root, &mut report);
             }

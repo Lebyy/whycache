@@ -10,6 +10,11 @@ permissions:
 
 jobs:
   latest-summary:
+    name: Turborepo ${{ matrix.turbo }}
+    strategy:
+      fail-fast: false
+      matrix:
+        turbo: ["1.9.9", "2.0.0", "latest"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -17,10 +22,13 @@ jobs:
         with:
           node-version: 24
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
-      - name: Create real summaries with the latest Turborepo
+      - name: Create real run summaries
         working-directory: tests/fixtures/canary
+        env:
+          TURBO_TELEMETRY_DISABLED: "1"
         run: |
-          npm install --ignore-scripts
+          if [[ "${{ matrix.turbo }}" == 1.* ]]; then cp turbo.v1.json turbo.json; fi
+          npm install --ignore-scripts --save-dev --package-lock "turbo@${{ matrix.turbo }}"
           npx turbo run build --summarize
           printf 'changed\n' > packages/app/input.txt
           npx turbo run build --summarize
@@ -31,5 +39,23 @@ jobs:
             const report = require("./canary-report.json");
             if (!report.tasks.some(task => task.classification === "root_cause")) {
               throw new Error("WhyCache did not find the canary input change");
+            }
+          '
+      - name: Verify automatic summary capture
+        run: |
+          mv tests/fixtures/canary/.turbo/runs tests/fixtures/canary/.turbo/recorded-runs
+          cargo run --quiet -- --json --repo tests/fixtures/canary > baseline-capture.json
+          node -e '
+            const report = require("./baseline-capture.json");
+            if (report.status !== "baseline_captured") {
+              throw new Error("WhyCache did not capture an automatic baseline");
+            }
+          '
+          printf 'changed again\n' > tests/fixtures/canary/packages/app/input.txt
+          cargo run --quiet -- --json --repo tests/fixtures/canary > automatic-report.json
+          node -e '
+            const report = require("./automatic-report.json");
+            if (!report.tasks.some(task => task.classification === "root_cause")) {
+              throw new Error("WhyCache did not compare against its automatic baseline");
             }
           '

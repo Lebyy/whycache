@@ -15,42 +15,25 @@
   <a href="https://github.com/Lebyy/whycache/blob/main/LICENSE-MIT"><img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg"></a>
 </p>
 
-WhyCache compares two Turborepo run summaries, isolates the inputs that changed, and ranks the most likely cause. It distinguishes direct root causes from downstream cascades and catches the especially confusing case where the task hash stayed identical but the cached artifact was unavailable.
-
-It runs locally, produces deterministic output, and never sends source, environment data, or build metadata anywhere.
-
-```text
-WhyCache — Turborepo cache diagnosis
-
-  Baseline  .turbo/runs/01.json
-  Current   .turbo/runs/02.json
-  Turbo     2.9.15 → 2.9.15
-
-web#build  MISS  root cause
-  Hash      111111111111 → 222222222222
-
-  1. 1 environment fingerprint(s) changed  98% confidence
-     • NODE_ENV  env-a → env-b
-
-  2. 1 task input file(s) changed  95% confidence
-     • apps/web/src/index.ts  source-a → source-b
-```
-
-## Install
-
-Once the first public release is available:
-
-```sh
-cargo install whycache
-```
-
-or:
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Lebyy/whycache/main/assets/terminal.gif" width="900" alt="WhyCache diagnosing a Turborepo cache miss">
+</p>
 
 ```sh
 npm install --global whycache
 ```
 
-Release binaries will be published for Linux x86-64/ARM64, macOS Intel/Apple Silicon, and Windows x86-64. Until then, build from source with Rust 1.85 or newer:
+WhyCache compares two Turborepo run summaries, isolates the inputs that changed, and ranks the most likely cause. It distinguishes direct root causes from downstream cascades and catches the especially confusing case where the task hash stayed identical but the cached artifact was unavailable.
+
+It runs locally, produces deterministic output, and never sends source, environment data, or build metadata anywhere.
+
+## Install
+
+```sh
+cargo install whycache
+```
+
+Release binaries target Linux x86-64/ARM64, macOS Intel/Apple Silicon, and Windows x86-64. Before the first public release, build from source with Rust 1.85 or newer:
 
 ```sh
 cargo install --path .
@@ -87,7 +70,7 @@ whycache build --md >> "$GITHUB_STEP_SUMMARY"
 whycache build --git
 ```
 
-If no saved history exists, `whycache build` runs a Turborepo dry summary and stores it at `.whycache/last-summary.json`. It tells you that a baseline was captured and waits for the next comparison. WhyCache does not invent a cause for a past miss it cannot observe.
+If no saved history exists, WhyCache reads task names from `turbo.json`, runs a Turborepo dry summary, and stores it at `.whycache/last-summary.json`. It tells you that a baseline was captured and waits for the next comparison. WhyCache does not invent a cause for a past miss it cannot observe.
 
 ## What it explains
 
@@ -106,7 +89,7 @@ Findings include confidence scores and concrete before/after fingerprints. Envir
 
 ## Output contract
 
-`--json` emits schema version `1`. Its keys and ordering are deterministic for the same two summaries. `--md` produces GitHub-flavored Markdown designed for `$GITHUB_STEP_SUMMARY` and pull-request comments. Human output uses color only when writing to a terminal.
+`--json` emits schema version `1`. Its keys and ordering are deterministic for the same two summaries. `--md` produces GitHub-flavored Markdown designed for `$GITHUB_STEP_SUMMARY` and pull-request comments. Human output uses color only when writing to a terminal. The [JSON contract](https://github.com/Lebyy/whycache/blob/main/docs/json-schema.md) documents the stable fields.
 
 Unknown run-summary fields are ignored. Unknown schema versions are parsed in compatibility mode with a visible warning. Fixtures cover Turborepo 1.9 and the current v2 summary shape.
 
@@ -118,7 +101,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets --all-features
 ```
 
-See the [contribution guide](https://github.com/Lebyy/whycache/blob/main/CONTRIBUTING.md) for test and release expectations, and the [architecture notes](https://github.com/Lebyy/whycache/blob/main/docs/architecture.md) for the diagnosis model.
+See the [contribution guide](https://github.com/Lebyy/whycache/blob/main/CONTRIBUTING.md) for test expectations, the [architecture notes](https://github.com/Lebyy/whycache/blob/main/docs/architecture.md) for the diagnosis model, and the [release guide](https://github.com/Lebyy/whycache/blob/main/docs/releasing.md) for the tag workflow.
 
 ## Privacy and scope
 

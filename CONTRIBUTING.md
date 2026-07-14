@@ -16,7 +16,6 @@ cargo test --all-targets --all-features
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets --all-features
-cargo test --doc
 ```
 
 Add or update a sanitized run-summary fixture for parser changes. Diagnosis changes need a test that proves the ranking, classification, and evidence. Never commit environment values, access tokens, private repository paths, or proprietary source fingerprints.

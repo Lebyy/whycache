@@ -3,7 +3,9 @@ use std::fmt::Write;
 use crate::{
     cli::Cli,
     error::Result,
-    model::{BaselineCaptured, CacheStatus, Cause, Classification, Report, TaskDiagnosis},
+    model::{
+        BaselineCaptured, CacheStatus, Cause, CauseKind, Classification, Report, TaskDiagnosis,
+    },
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -59,9 +61,31 @@ fn render_human(report: &Report, colored: bool) -> String {
     ) {
         let _ = writeln!(output, "  Turbo     {before} → {after}");
     }
+    let root_causes = report
+        .tasks
+        .iter()
+        .filter(|task| {
+            matches!(
+                task.classification,
+                Classification::RootCause
+                    | Classification::CacheUnavailable
+                    | Classification::NewTask
+            )
+        })
+        .count();
+    let cascades = report
+        .tasks
+        .iter()
+        .filter(|task| task.classification == Classification::Cascade)
+        .count();
+    let _ = writeln!(
+        output,
+        "  Result    {root_causes} root cause(s), {cascades} cascade(s), {} task(s)",
+        report.tasks.len()
+    );
 
     if report.tasks.is_empty() {
-        let _ = writeln!(output, "\nNo matching tasks were found.");
+        let _ = writeln!(output, "\nNo cache misses or matching tasks were found.");
     }
     for task in &report.tasks {
         render_human_task(&mut output, task, colored);
@@ -124,6 +148,10 @@ fn render_human_task(output: &mut String, task: &TaskDiagnosis, colored: bool) {
             }
         }
     }
+    if let Some(culprit) = likely_culprit(task) {
+        let _ = writeln!(output, "\n  💡 Likely culprit: {culprit}");
+    }
+    let _ = writeln!(output, "\n  UNCHANGED  {}", unchanged_text(&task.unchanged));
     for hint in &task.hints {
         let _ = writeln!(output, "  Hint: {hint}");
     }
@@ -164,6 +192,14 @@ fn render_markdown(report: &Report) -> String {
         for cause in &task.causes {
             render_markdown_cause(&mut output, cause, task);
         }
+        if let Some(culprit) = likely_culprit(task) {
+            let _ = writeln!(output, "**Likely culprit:** {culprit}\n");
+        }
+        let _ = writeln!(
+            output,
+            "**Unchanged:** {}\n",
+            unchanged_text(&task.unchanged)
+        );
         if !task.hints.is_empty() {
             let _ = writeln!(output, "**Next checks**\n");
             for hint in &task.hints {
@@ -178,7 +214,54 @@ fn render_markdown(report: &Report) -> String {
             let _ = writeln!(output, "- {warning}");
         }
     }
+    let content_length = output.trim_end_matches('\n').len();
+    output.truncate(content_length);
+    output.push('\n');
     output
+}
+
+fn likely_culprit(task: &TaskDiagnosis) -> Option<String> {
+    let cause = task.causes.first()?;
+    let source = cause
+        .evidence
+        .first()
+        .map(|evidence| evidence.source.as_str());
+    Some(match (cause.kind, source) {
+        (CauseKind::Environment, Some(name)) => format!("{name} changed between runs."),
+        (CauseKind::InputFile | CauseKind::GlobalInput, Some(path)) => {
+            format!("{path} changed between runs.")
+        }
+        (CauseKind::UpstreamTask, Some(task)) => {
+            format!("{task} changed first and cascaded into this task.")
+        }
+        (CauseKind::CacheUnavailable, _) => {
+            "The cache key is unchanged, but its artifact was unavailable.".to_owned()
+        }
+        (CauseKind::TurboVersion, _) => "The Turborepo version changed.".to_owned(),
+        (CauseKind::NewTask, _) => "The task did not exist in the baseline run.".to_owned(),
+        (_, Some(source)) => format!("{}: {source}.", cause.summary),
+        (_, None) => format!("{}.", cause.summary),
+    })
+}
+
+fn unchanged_text(unchanged: &crate::model::UnchangedSummary) -> String {
+    let mut parts = vec![
+        format!("{} file(s)", unchanged.files),
+        format!(
+            "{} environment variable(s)",
+            unchanged.environment_variables
+        ),
+    ];
+    if unchanged.lockfile == Some(true) {
+        parts.push("lockfile".to_owned());
+    }
+    if unchanged.turbo_json == Some(true) {
+        parts.push("turbo.json".to_owned());
+    }
+    if unchanged.task_configuration {
+        parts.push("task configuration".to_owned());
+    }
+    parts.join(", ")
 }
 
 fn render_markdown_cause(output: &mut String, cause: &Cause, task: &TaskDiagnosis) {
@@ -253,7 +336,7 @@ fn style(value: &str, code: &str, enabled: bool) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{Classification, Report, SummaryMetadata, TaskDiagnosis};
+    use crate::model::{Classification, Report, SummaryMetadata, TaskDiagnosis, UnchangedSummary};
     use std::collections::BTreeMap;
 
     #[test]
@@ -284,6 +367,13 @@ mod tests {
                 current_hash: Some("bbb".to_owned()),
                 classification: Classification::Unexplained,
                 causes: vec![],
+                unchanged: UnchangedSummary {
+                    files: 0,
+                    environment_variables: 0,
+                    lockfile: None,
+                    turbo_json: None,
+                    task_configuration: true,
+                },
                 hints: vec![],
                 git_stats: BTreeMap::new(),
             }],

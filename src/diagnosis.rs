@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{
     Cause, CauseKind, Classification, Evidence, Report, RunSummary, SummaryMetadata, SummaryPair,
-    TaskDiagnosis, TaskSummary, changed_keys,
+    TaskDiagnosis, TaskSummary, UnchangedSummary, changed_keys, portable_path,
 };
 
 pub fn analyze(pair: SummaryPair, task_filter: Option<&str>) -> Report {
@@ -10,7 +10,14 @@ pub fn analyze(pair: SummaryPair, task_filter: Option<&str>) -> Report {
     let current_tasks = task_map(&pair.current.summary);
     let mut tasks = current_tasks
         .values()
-        .filter(|task| task_filter.is_none_or(|filter| task.matches(filter)))
+        .filter(|task| {
+            task_filter.is_none_or(|filter| task.matches(filter))
+                && (task_filter.is_some()
+                    || matches!(
+                        task.cache.status(),
+                        crate::model::CacheStatus::Miss | crate::model::CacheStatus::Unknown
+                    ))
+        })
         .map(|current| {
             diagnose_task(
                 baseline_tasks.get(&current.identity()).copied(),
@@ -22,22 +29,24 @@ pub fn analyze(pair: SummaryPair, task_filter: Option<&str>) -> Report {
             )
         })
         .collect::<Vec<_>>();
-    tasks.sort_by(|left, right| left.task_id.cmp(&right.task_id));
-
-    let mut warnings = pair.warnings;
-    if task_filter.is_some() && tasks.is_empty() {
-        warnings.push(format!(
-            "No current task matched `{}`.",
-            task_filter.unwrap_or_default()
-        ));
-    }
+    let topological_order = topological_order(&current_tasks);
+    tasks.sort_by(|left, right| {
+        classification_rank(left.classification)
+            .cmp(&classification_rank(right.classification))
+            .then_with(|| {
+                topological_order
+                    .get(&left.task_id)
+                    .cmp(&topological_order.get(&right.task_id))
+            })
+            .then_with(|| left.task_id.cmp(&right.task_id))
+    });
 
     Report {
         schema_version: "1",
         baseline: metadata(&pair.baseline),
         current: metadata(&pair.current),
         tasks,
-        warnings,
+        warnings: pair.warnings,
     }
 }
 
@@ -70,6 +79,7 @@ fn diagnose_task(
                     detail: Some("No baseline task with the same id was found.".to_owned()),
                 }],
             }],
+            unchanged: unchanged_summary(None, current, baseline_run, current_run),
             hints: vec![
                 "Verify that the same package and task graph were selected in both runs."
                     .to_owned(),
@@ -141,6 +151,7 @@ fn diagnose_task(
         Classification::Unexplained
     };
 
+    let unchanged = unchanged_summary(Some(baseline), current, baseline_run, current_run);
     let hints = build_hints(current, classification, &causes);
     TaskDiagnosis {
         task_id,
@@ -151,6 +162,7 @@ fn diagnose_task(
         current_hash: current.hash.clone(),
         classification,
         causes,
+        unchanged,
         hints,
         git_stats: BTreeMap::new(),
     }
@@ -244,7 +256,7 @@ fn add_input_causes(causes: &mut Vec<Cause>, baseline: &TaskSummary, current: &T
         .cloned()
         .collect::<BTreeSet<_>>();
     if !ordinary.is_empty() {
-        let confidence = if ordinary.len() == 1 { 95 } else { 86 };
+        let confidence = if ordinary.len() == 1 { 95 } else { 91 };
         causes.push(file_cause(
             CauseKind::InputFile,
             &format!("{} task input file(s) changed", ordinary.len()),
@@ -290,6 +302,19 @@ fn add_global_causes(causes: &mut Vec<Cause>, baseline: &RunSummary, current: &R
                     .clone()
                     .or_else(|| after.root_key.clone()),
                 detail: engines_detail(&before.engines, &after.engines),
+            }],
+        });
+    }
+    if before.root_pipeline != after.root_pipeline {
+        causes.push(Cause {
+            kind: CauseKind::TaskConfiguration,
+            summary: "The repository-wide Turborepo pipeline changed".to_owned(),
+            confidence: 95,
+            evidence: vec![Evidence {
+                source: "globalCacheInputs.rootPipeline".to_owned(),
+                before: None,
+                after: None,
+                detail: Some("The raw pipeline is omitted because arbitrary configuration can contain sensitive values.".to_owned()),
             }],
         });
     }
@@ -464,7 +489,7 @@ fn file_cause(
                 detail: match (before.contains_key(path), after.contains_key(path)) {
                     (false, true) => Some("File was added to the task inputs.".to_owned()),
                     (true, false) => Some("File was removed from the task inputs.".to_owned()),
-                    _ => None,
+                    _ => Some("File content fingerprint changed.".to_owned()),
                 },
             })
             .collect(),
@@ -479,9 +504,156 @@ fn task_map(summary: &RunSummary) -> BTreeMap<String, &TaskSummary> {
         .collect()
 }
 
+fn topological_order(tasks: &BTreeMap<String, &TaskSummary>) -> BTreeMap<String, usize> {
+    let mut indegree = tasks
+        .iter()
+        .map(|(id, task)| {
+            let dependencies = task
+                .dependencies
+                .iter()
+                .filter(|dependency| tasks.contains_key(dependency.as_str()))
+                .count();
+            (id.clone(), dependencies)
+        })
+        .collect::<BTreeMap<_, _>>();
+    let mut downstream = BTreeMap::<String, BTreeSet<String>>::new();
+    for (id, task) in tasks {
+        for dependency in &task.dependencies {
+            if tasks.contains_key(dependency) {
+                downstream
+                    .entry(dependency.clone())
+                    .or_default()
+                    .insert(id.clone());
+            }
+        }
+    }
+    let mut ready = indegree
+        .iter()
+        .filter(|(_, degree)| **degree == 0)
+        .map(|(id, _)| id.clone())
+        .collect::<BTreeSet<_>>();
+    let mut order = BTreeMap::new();
+    while let Some(id) = ready.pop_first() {
+        let position = order.len();
+        order.insert(id.clone(), position);
+        for dependent in downstream.get(&id).into_iter().flatten() {
+            let degree = indegree.get_mut(dependent).unwrap();
+            *degree -= 1;
+            if *degree == 0 {
+                ready.insert(dependent.clone());
+            }
+        }
+    }
+    for id in tasks.keys() {
+        if !order.contains_key(id) {
+            order.insert(id.clone(), order.len());
+        }
+    }
+    order
+}
+
+fn classification_rank(classification: Classification) -> u8 {
+    match classification {
+        Classification::RootCause | Classification::CacheUnavailable | Classification::NewTask => 0,
+        Classification::Cascade => 1,
+        Classification::Unexplained => 2,
+        Classification::Unchanged => 3,
+    }
+}
+
+fn unchanged_summary(
+    baseline: Option<&TaskSummary>,
+    current: &TaskSummary,
+    baseline_run: &RunSummary,
+    current_run: &RunSummary,
+) -> UnchangedSummary {
+    let Some(baseline) = baseline else {
+        return UnchangedSummary {
+            files: 0,
+            environment_variables: 0,
+            lockfile: None,
+            turbo_json: None,
+            task_configuration: false,
+        };
+    };
+    let files = baseline
+        .inputs
+        .iter()
+        .filter(|(path, hash)| {
+            !is_lockfile(path) && !is_task_config(path) && current.inputs.get(*path) == Some(*hash)
+        })
+        .count();
+    let mut before_env = baseline.environment_variables.fingerprints();
+    before_env.extend(
+        baseline_run
+            .global_cache_inputs
+            .environment_variables
+            .fingerprints(),
+    );
+    let mut after_env = current.environment_variables.fingerprints();
+    after_env.extend(
+        current_run
+            .global_cache_inputs
+            .environment_variables
+            .fingerprints(),
+    );
+    let environment_variables = before_env
+        .iter()
+        .filter(|(name, fingerprint)| after_env.get(*name) == Some(*fingerprint))
+        .count();
+    let lockfile = path_unchanged(is_lockfile, baseline, current, baseline_run, current_run);
+    let turbo_json = path_unchanged(
+        |path| path.rsplit('/').next() == Some("turbo.json"),
+        baseline,
+        current,
+        baseline_run,
+        current_run,
+    );
+    let task_configuration = baseline.resolved_task_definition == current.resolved_task_definition
+        && baseline.command == current.command
+        && baseline.outputs == current.outputs
+        && baseline.excluded_outputs == current.excluded_outputs
+        && baseline.directory == current.directory
+        && baseline.dependencies == current.dependencies
+        && baseline.dependents == current.dependents;
+    UnchangedSummary {
+        files,
+        environment_variables,
+        lockfile,
+        turbo_json,
+        task_configuration,
+    }
+}
+
+fn path_unchanged(
+    predicate: impl Fn(&str) -> bool,
+    baseline: &TaskSummary,
+    current: &TaskSummary,
+    baseline_run: &RunSummary,
+    current_run: &RunSummary,
+) -> Option<bool> {
+    let before = baseline
+        .inputs
+        .iter()
+        .chain(&baseline_run.global_cache_inputs.files)
+        .filter(|(path, _)| predicate(path))
+        .collect::<BTreeMap<_, _>>();
+    let after = current
+        .inputs
+        .iter()
+        .chain(&current_run.global_cache_inputs.files)
+        .filter(|(path, _)| predicate(path))
+        .collect::<BTreeMap<_, _>>();
+    if before.is_empty() && after.is_empty() {
+        None
+    } else {
+        Some(before == after)
+    }
+}
+
 fn metadata(source: &crate::model::SummarySource) -> SummaryMetadata {
     SummaryMetadata {
-        path: source.path.display().to_string(),
+        path: portable_path(&source.path),
         id: source.summary.id.clone(),
         schema_version: source.summary.version.clone(),
         turbo_version: source.summary.turbo_version.clone(),
@@ -593,6 +765,19 @@ fn build_hints(
         .any(|cause| cause.kind == CauseKind::Environment)
     {
         hints.push("Keep task-affecting variables in `env` or `globalEnv`; avoid broad wildcard inputs when possible.".to_owned());
+        let volatile = causes
+            .iter()
+            .filter(|cause| cause.kind == CauseKind::Environment)
+            .flat_map(|cause| &cause.evidence)
+            .map(|evidence| evidence.source.as_str())
+            .filter(|name| volatile_environment_name(name))
+            .collect::<BTreeSet<_>>();
+        if !volatile.is_empty() {
+            hints.push(format!(
+                "Per-run variable(s) {} commonly invalidate every build; remove them from task hashing unless their values affect outputs.",
+                volatile.into_iter().collect::<Vec<_>>().join(", ")
+            ));
+        }
     }
     if causes
         .iter()
@@ -606,12 +791,82 @@ fn build_hints(
     if current.outputs.is_empty() {
         hints.push("This task declares no outputs; add `outputs` if its artifacts should be restored from cache.".to_owned());
     }
-    if current.log_file.is_none() {
-        hints.push("No task log path was recorded in the current summary.".to_owned());
+    let output_inputs = current
+        .inputs
+        .keys()
+        .filter(|input| {
+            current
+                .outputs
+                .iter()
+                .any(|output| path_matches_output(input, output))
+        })
+        .collect::<Vec<_>>();
+    if !output_inputs.is_empty() {
+        hints.push(format!(
+            "Generated output {} is also hashed as an input; exclude generated directories from inputs and version control.",
+            output_inputs[0]
+        ));
+    }
+    let log_inputs = current
+        .inputs
+        .keys()
+        .filter(|path| {
+            path.ends_with(".log")
+                || path.contains(".turbo/")
+                || current.log_file.as_ref().is_some_and(|log_file| {
+                    log_file.ends_with(path.as_str()) || path.ends_with(log_file)
+                })
+        })
+        .collect::<Vec<_>>();
+    if !log_inputs.is_empty() {
+        hints.push(format!(
+            "Generated log {} is part of the task inputs; ignore or exclude it to prevent self-invalidating builds.",
+            log_inputs[0]
+        ));
+    }
+    let direct_kinds = causes
+        .iter()
+        .filter(|cause| cause.kind != CauseKind::UpstreamTask)
+        .map(|cause| cause.kind)
+        .collect::<BTreeSet<_>>();
+    if direct_kinds == BTreeSet::from([CauseKind::DependencyGraph])
+        && causes
+            .iter()
+            .flat_map(|cause| &cause.evidence)
+            .any(|evidence| is_lockfile(&evidence.source))
+    {
+        hints.push("Only the lockfile changed; inspect resolved versions and workspace links before clearing the cache.".to_owned());
     }
     hints.sort();
     hints.dedup();
     hints
+}
+
+fn volatile_environment_name(name: &str) -> bool {
+    let name = name.to_ascii_uppercase();
+    [
+        "BUILD_TIME",
+        "BUILD_TIMESTAMP",
+        "CI_COMMIT_SHA",
+        "GITHUB_RUN_ID",
+        "GITHUB_RUN_NUMBER",
+        "GITHUB_SHA",
+        "RUN_ID",
+        "SOURCE_DATE_EPOCH",
+        "TIMESTAMP",
+    ]
+    .iter()
+    .any(|candidate| name == *candidate)
+}
+
+fn path_matches_output(input: &str, output: &str) -> bool {
+    let output = output.trim_start_matches('!').trim_start_matches("./");
+    let prefix = output
+        .split('*')
+        .next()
+        .unwrap_or(output)
+        .trim_end_matches('/');
+    !prefix.is_empty() && (input == prefix || input.starts_with(&format!("{prefix}/")))
 }
 
 #[cfg(test)]
@@ -681,5 +936,96 @@ mod tests {
             redact_command("deploy --api-token=plain REGION=iad"),
             "deploy --api-token=<redacted> REGION=iad"
         );
+    }
+
+    #[test]
+    fn orders_root_cause_before_downstream_cascade() {
+        let baseline = source(
+            "before",
+            r#"{"tasks":[
+                {"taskId":"ui#build","task":"build","hash":"ui-a","inputs":{"button.ts":"a"},"cache":{"status":"HIT"}},
+                {"taskId":"web#build","task":"build","hash":"web-a","inputs":{"index.ts":"same"},"dependencies":["ui#build"],"cache":{"status":"HIT"}}
+            ]}"#,
+        );
+        let current = source(
+            "after",
+            r#"{"tasks":[
+                {"taskId":"ui#build","task":"build","hash":"ui-b","inputs":{"button.ts":"b"},"cache":{"status":"MISS"}},
+                {"taskId":"web#build","task":"build","hash":"web-b","inputs":{"index.ts":"same"},"dependencies":["ui#build"],"cache":{"status":"MISS"}}
+            ]}"#,
+        );
+        let report = analyze(
+            SummaryPair {
+                baseline,
+                current,
+                warnings: vec![],
+            },
+            None,
+        );
+        assert_eq!(report.tasks[0].task_id, "ui#build");
+        assert_eq!(report.tasks[0].classification, Classification::RootCause);
+        assert_eq!(report.tasks[1].task_id, "web#build");
+        assert_eq!(report.tasks[1].classification, Classification::Cascade);
+    }
+
+    #[test]
+    fn emits_curated_hints_for_known_self_invalidation_patterns() {
+        let baseline = source(
+            "before",
+            r#"{"tasks":[{"taskId":"web#build","task":"build","hash":"a","inputs":{"pnpm-lock.yaml":"lock-a"},"outputs":[".next/**"],"environmentVariables":{"configured":["GITHUB_SHA=sha-a"]}}]}"#,
+        );
+        let current = source(
+            "after",
+            r#"{"tasks":[{"taskId":"web#build","task":"build","hash":"b","inputs":{"pnpm-lock.yaml":"lock-b",".next/cache/data":"generated",".turbo/build.log":"log"},"outputs":[".next/**"],"logFile":".turbo/build.log","environmentVariables":{"configured":["GITHUB_SHA=sha-b"]},"cache":{"status":"MISS"}}]}"#,
+        );
+        let report = analyze(
+            SummaryPair {
+                baseline,
+                current,
+                warnings: vec![],
+            },
+            None,
+        );
+        let hints = report.tasks[0].hints.join("\n");
+        assert!(hints.contains("Per-run variable(s) GITHUB_SHA"));
+        assert!(hints.contains("Generated output .next/cache/data"));
+        assert!(hints.contains("Generated log .turbo/build.log"));
+    }
+
+    #[test]
+    fn diagnoses_global_dependency_config_and_version_changes() {
+        let baseline = source(
+            "before",
+            r#"{
+              "turboVersion":"1.9.9",
+              "globalCacheInputs":{"files":{"turbo.json":"a"},"hashOfExternalDependencies":"deps-a"},
+              "tasks":[{"taskId":"app#build","task":"build","hash":"a","command":"old","resolvedTaskDefinition":{"cache":true},"cache":{"status":"HIT"}}]
+            }"#,
+        );
+        let current = source(
+            "after",
+            r#"{
+              "turboVersion":"2.9.15",
+              "globalCacheInputs":{"files":{"turbo.json":"b"},"hashOfExternalDependencies":"deps-b"},
+              "tasks":[{"taskId":"app#build","task":"build","hash":"b","command":"new","resolvedTaskDefinition":{"cache":false},"cache":{"status":"MISS"}}]
+            }"#,
+        );
+        let report = analyze(
+            SummaryPair {
+                baseline,
+                current,
+                warnings: vec![],
+            },
+            None,
+        );
+        let kinds = report.tasks[0]
+            .causes
+            .iter()
+            .map(|cause| cause.kind)
+            .collect::<BTreeSet<_>>();
+        assert!(kinds.contains(&CauseKind::GlobalInput));
+        assert!(kinds.contains(&CauseKind::DependencyGraph));
+        assert!(kinds.contains(&CauseKind::TaskConfiguration));
+        assert!(kinds.contains(&CauseKind::TurboVersion));
     }
 }

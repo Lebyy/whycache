@@ -122,6 +122,11 @@ jobs:
           mkdir -p npm/platform/win32-x64/bin unpacked/win32-x64
           unzip -q artifacts/win32-x64/*.zip -d unpacked/win32-x64
           cp unpacked/win32-x64/whycache.exe npm/platform/win32-x64/bin/whycache.exe
+      - name: Smoke-test the npm launcher
+        run: |
+          mkdir -p npm/whycache/node_modules/@whycache
+          cp -R npm/platform/linux-x64 npm/whycache/node_modules/@whycache/linux-x64
+          node npm/whycache/bin/whycache.js --version
       - name: Publish platform packages
         run: |
           for package in npm/platform/*; do npm publish "./$package" --access public --provenance; done

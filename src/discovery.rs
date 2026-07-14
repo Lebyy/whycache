@@ -9,7 +9,7 @@ use std::{
 use crate::{
     cli::Cli,
     error::{Error, Result},
-    model::{BaselineCaptured, SummaryPair, SummarySource},
+    model::{BaselineCaptured, SummaryPair, SummarySource, portable_path},
     parser::{parse_bytes, parse_file},
 };
 
@@ -46,6 +46,9 @@ impl Discovery {
                 source_from_path(resolve(&self.root, against))?
             };
             let current = newest_source(&summaries)?;
+            if same_file(&baseline.path, &current.path) {
+                return Err(Error::SameSummary(current.path));
+            }
             collect_schema_warning(&baseline, &mut warnings);
             collect_schema_warning(&current, &mut warnings);
             return Ok(LoadResult::Ready(Box::new(SummaryPair {
@@ -77,26 +80,34 @@ impl Discovery {
             })));
         }
 
-        if let Some(task) = cli.task.as_deref() {
-            let dry = run_dry_summary(&self.root, task)?;
+        let tasks = match cli.task.as_deref() {
+            Some(task) => vec![task.to_owned()],
+            None => configured_tasks(&self.root)?,
+        };
+        if !tasks.is_empty() {
+            let dry = run_dry_summary(&self.root, &tasks)?;
             let current = SummarySource {
                 path: PathBuf::from("<turbo --dry=json>"),
                 summary: parse_bytes(&dry, "turbo --dry=json")?,
             };
 
-            let baseline = if own_baseline.is_file() {
-                source_from_path(own_baseline.clone())?
-            } else if let Some(path) = summaries.last() {
+            let baseline = if let Some(path) = summaries.last() {
                 source_from_path(path.clone())?
+            } else if own_baseline.is_file() {
+                source_from_path(own_baseline.clone())?
             } else {
                 save_baseline(&own_baseline, &dry)?;
+                let next_command = cli
+                    .task
+                    .as_deref()
+                    .map_or_else(|| "whycache".to_owned(), |task| format!("whycache {task}"));
                 return Ok(LoadResult::BaselineCaptured(BaselineCaptured {
                     schema_version: "1",
                     status: "baseline_captured",
                     path: relative_display(&self.root, &own_baseline),
                     task_count: current.summary.tasks.len(),
                     message: "No historical summary existed, so WhyCache captured the current inputs. A past cache miss cannot be reconstructed without a baseline.".to_owned(),
-                    next_command: format!("whycache {task}"),
+                    next_command,
                 }));
             };
 
@@ -114,10 +125,7 @@ impl Discovery {
             })));
         }
 
-        match summaries.len() {
-            0 => Err(Error::NoSummaries(self.root.join(".turbo/runs"))),
-            _ => Err(Error::NoBaseline(summaries[0].clone())),
-        }
+        Err(Error::NoSummaries(self.root.join(".turbo/runs")))
     }
 }
 
@@ -177,6 +185,13 @@ fn source_from_path(path: PathBuf) -> Result<SummarySource> {
     Ok(SummarySource { path, summary })
 }
 
+fn same_file(left: &Path, right: &Path) -> bool {
+    match (fs::canonicalize(left), fs::canonicalize(right)) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => left == right,
+    }
+}
+
 fn read_stdin_summary() -> Result<SummarySource> {
     let mut bytes = Vec::new();
     io::stdin().read_to_end(&mut bytes)?;
@@ -186,13 +201,38 @@ fn read_stdin_summary() -> Result<SummarySource> {
     })
 }
 
-fn run_dry_summary(root: &Path, task: &str) -> Result<Vec<u8>> {
+fn configured_tasks(root: &Path) -> Result<Vec<String>> {
+    let path = root.join("turbo.json");
+    let contents = fs::read(&path).map_err(|source| Error::Read {
+        path: path.clone(),
+        source,
+    })?;
+    let config: serde_json::Value =
+        serde_json::from_slice(&contents).map_err(|source| Error::Config {
+            path: path.clone(),
+            source,
+        })?;
+    let tasks = config
+        .get("tasks")
+        .or_else(|| config.get("pipeline"))
+        .and_then(serde_json::Value::as_object)
+        .map(|tasks| tasks.keys().cloned().collect::<Vec<_>>())
+        .unwrap_or_default();
+    if tasks.is_empty() {
+        return Err(Error::NoConfiguredTasks(path));
+    }
+    Ok(tasks)
+}
+
+fn run_dry_summary(root: &Path, tasks: &[String]) -> Result<Vec<u8>> {
     let (program, prefix) = turbo_program(root);
-    let command = format!("{} run <task> --dry=json", program.display());
+    let command = format!("{} run <tasks> --dry=json", program.display());
     let output = Command::new(&program)
         .current_dir(root)
         .args(prefix)
-        .args(["run", task, "--dry=json"])
+        .arg("run")
+        .args(tasks)
+        .arg("--dry=json")
         .output()
         .map_err(|source| Error::Spawn {
             command: command.to_owned(),
@@ -297,7 +337,7 @@ fn collect_schema_warning(source: &SummarySource, warnings: &mut Vec<String>) {
         .summary
         .version
         .as_deref()
-        .is_some_and(|version| version != "1")
+        .is_some_and(|version| !matches!(version, "0" | "1"))
     {
         warnings.push(format!(
             "{} uses run-summary schema {}; parsed in compatibility mode.",
@@ -308,10 +348,7 @@ fn collect_schema_warning(source: &SummarySource, warnings: &mut Vec<String>) {
 }
 
 fn relative_display(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root)
-        .unwrap_or(path)
-        .display()
-        .to_string()
+    portable_path(path.strip_prefix(root).unwrap_or(path))
 }
 
 #[cfg(test)]
@@ -345,5 +382,43 @@ mod tests {
                 .to_string_lossy()
                 .ends_with("node_modules/@turbo/windows-64/bin/turbo.exe")
         );
+    }
+
+    #[test]
+    fn discovers_current_and_legacy_task_configuration() {
+        let temp = tempfile::tempdir().unwrap();
+        fs::write(
+            temp.path().join("turbo.json"),
+            r#"{"tasks":{"test":{},"build":{}}}"#,
+        )
+        .unwrap();
+        assert_eq!(configured_tasks(temp.path()).unwrap(), ["build", "test"]);
+
+        fs::write(
+            temp.path().join("turbo.json"),
+            r#"{"pipeline":{"lint":{}}}"#,
+        )
+        .unwrap();
+        assert_eq!(configured_tasks(temp.path()).unwrap(), ["lint"]);
+    }
+
+    #[test]
+    fn warns_only_for_unknown_summary_schemas() {
+        let summary = parse_bytes(
+            br#"{"version":"0","tasks":[{"taskId":"app#build"}]}"#,
+            "schema-zero",
+        )
+        .unwrap();
+        let mut source = SummarySource {
+            path: PathBuf::from("summary.json"),
+            summary,
+        };
+        let mut warnings = Vec::new();
+        collect_schema_warning(&source, &mut warnings);
+        assert!(warnings.is_empty());
+
+        source.summary.version = Some("99".to_owned());
+        collect_schema_warning(&source, &mut warnings);
+        assert_eq!(warnings.len(), 1);
     }
 }

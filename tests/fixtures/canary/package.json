@@ -1,8 +1,6 @@
 {
   "name": "whycache-canary",
   "private": true,
-  "workspaces": ["packages/*"],
-  "devDependencies": {
-    "turbo": "latest"
-  }
+  "packageManager": "npm@11.18.0",
+  "workspaces": ["packages/*"]
 }

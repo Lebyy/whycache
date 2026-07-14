@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,11 +14,11 @@ pub struct RunSummary {
     pub version: Option<String>,
     #[serde(default)]
     pub turbo_version: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub global_cache_inputs: GlobalCacheInputs,
     #[serde(default)]
     pub execution: Option<Execution>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub tasks: Vec<TaskSummary>,
     #[serde(default)]
     pub scm: Option<serde_json::Value>,
@@ -47,6 +47,7 @@ impl RunSummary {
         ["sha", "commitSha", "commit"]
             .into_iter()
             .find_map(|key| scm.get(key).and_then(serde_json::Value::as_str))
+            .filter(|sha| !sha.is_empty())
     }
 }
 
@@ -55,15 +56,17 @@ impl RunSummary {
 pub struct GlobalCacheInputs {
     #[serde(default)]
     pub root_key: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub files: BTreeMap<String, String>,
     #[serde(default)]
     pub hash_of_external_dependencies: Option<String>,
     #[serde(default)]
     pub hash_of_internal_dependencies: Option<String>,
     #[serde(default)]
+    pub root_pipeline: Option<serde_json::Value>,
+    #[serde(default, deserialize_with = "null_default")]
     pub environment_variables: EnvironmentVariables,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub engines: BTreeMap<String, String>,
 }
 
@@ -80,29 +83,29 @@ pub struct TaskSummary {
     pub hash: Option<String>,
     #[serde(default)]
     pub hash_reason: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub inputs: BTreeMap<String, String>,
     #[serde(default)]
     pub hash_of_external_dependencies: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub cache: CacheSummary,
     #[serde(default)]
     pub command: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub outputs: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub excluded_outputs: Vec<String>,
     #[serde(default)]
     pub log_file: Option<String>,
     #[serde(default)]
     pub directory: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub dependencies: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub dependents: Vec<String>,
     #[serde(default)]
     pub resolved_task_definition: Option<serde_json::Value>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub environment_variables: EnvironmentVariables,
     #[serde(default)]
     pub execution: Option<Execution>,
@@ -172,20 +175,29 @@ pub struct Execution {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnvironmentVariables {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub specified: SpecifiedEnvironmentVariables,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub configured: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub inferred: Vec<String>,
+    #[serde(default, deserialize_with = "null_default")]
+    pub global: Vec<String>,
     #[serde(default)]
     pub passthrough: Option<Vec<String>>,
+    #[serde(default)]
+    pub global_passthrough: Option<Vec<String>>,
 }
 
 impl EnvironmentVariables {
     pub fn fingerprints(&self) -> BTreeMap<String, Option<String>> {
         let mut result = BTreeMap::new();
-        for entry in self.configured.iter().chain(&self.inferred) {
+        for entry in self
+            .configured
+            .iter()
+            .chain(&self.inferred)
+            .chain(&self.global)
+        {
             let (name, hash) = split_env_fingerprint(entry);
             result.insert(name, hash);
         }
@@ -195,6 +207,7 @@ impl EnvironmentVariables {
             .iter()
             .chain(self.specified.pass_through_env.iter().flatten())
             .chain(self.passthrough.iter().flatten())
+            .chain(self.global_passthrough.iter().flatten())
         {
             result.entry(name.clone()).or_insert(None);
         }
@@ -212,7 +225,7 @@ fn split_env_fingerprint(entry: &str) -> (String, Option<String>) {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpecifiedEnvironmentVariables {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_default")]
     pub env: Vec<String>,
     #[serde(default)]
     pub pass_through_env: Option<Vec<String>>,
@@ -271,9 +284,22 @@ pub struct TaskDiagnosis {
     pub current_hash: Option<String>,
     pub classification: Classification,
     pub causes: Vec<Cause>,
+    pub unchanged: UnchangedSummary,
     pub hints: Vec<String>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub git_stats: BTreeMap<String, GitStat>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnchangedSummary {
+    pub files: usize,
+    pub environment_variables: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lockfile: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub turbo_json: Option<bool>,
+    pub task_configuration: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -350,4 +376,31 @@ pub fn changed_keys<V: PartialEq>(
         .filter(|key| before.get(*key) != after.get(*key))
         .cloned()
         .collect()
+}
+
+pub fn portable_path(path: &std::path::Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+fn null_default<'de, D, T>(deserializer: D) -> std::result::Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Option::<T>::deserialize(deserializer).map(Option::unwrap_or_default)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::*;
+
+    #[test]
+    fn normalizes_windows_paths_for_stable_reports() {
+        assert_eq!(
+            portable_path(Path::new(r"C:\repo\.turbo\run.json")),
+            "C:/repo/.turbo/run.json"
+        );
+    }
 }

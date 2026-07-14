@@ -1,0 +1,33 @@
+WhyCache — Turborepo cache diagnosis
+
+  Baseline  tests/fixtures/repo/.turbo/runs/a-baseline.json
+  Current   tests/fixtures/repo/.turbo/runs/z-current.json
+  Turbo     2.9.15 → 2.9.15
+  Result    2 root cause(s), 0 cascade(s), 2 task(s)
+
+ui#build  MISS  root cause
+  Hash      upstream-a → upstream-b
+
+  1. 1 task input file(s) changed  95% confidence
+     • packages/ui/src/button.tsx  button-a → button-b
+
+  💡 Likely culprit: packages/ui/src/button.tsx changed between runs.
+
+  UNCHANGED  0 file(s), 1 environment variable(s), turbo.json, task configuration
+
+web#build  MISS  root cause
+  Hash      111111111111 → 222222222222
+
+  1. 1 environment fingerprint(s) changed  98% confidence
+     • NODE_ENV  env-a → env-b
+
+  2. 1 task input file(s) changed  95% confidence
+     • apps/web/src/index.ts  source-a → source-b
+
+  3. 1 upstream task hash(es) changed  90% confidence
+     • ui#build  upstream-a → upstream-b
+
+  💡 Likely culprit: NODE_ENV changed between runs.
+
+  UNCHANGED  0 file(s), 1 environment variable(s), turbo.json, task configuration
+  Hint: Keep task-affecting variables in `env` or `globalEnv`; avoid broad wildcard inputs when possible.

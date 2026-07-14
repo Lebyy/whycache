@@ -1,30 +1,24 @@
 {
-  "id": "3GUi5RHTM90epBH1AX9fUG8ptfw",
-  "version": "0",
-  "turboVersion": "1.9.9",
+  "id": "3GUi5QtX3m5gHS8587iNDBix6yy",
+  "version": "1",
+  "turboVersion": "2.10.5",
+  "monorepo": true,
   "globalCacheInputs": {
-    "rootKey": "Buffalo buffalo Buffalo buffalo buffalo buffalo Buffalo buffalo",
+    "rootKey": "I can’t see ya, but I know you’re here",
     "files": {},
-    "hashOfExternalDependencies": "f2adc7a3c9848d61",
-    "rootPipeline": {
-      "build": {
-        "outputs": [
-          "dist/**"
-        ],
-        "cache": true,
-        "dependsOn": [],
-        "inputs": [],
-        "outputMode": "full",
+    "hashOfExternalDependencies": "b5bbdb1cd5780cff",
+    "hashOfInternalDependencies": "",
+    "environmentVariables": {
+      "specified": {
         "env": [],
-        "persistent": false
-      }
-    }
+        "passThroughEnv": null
+      },
+      "configured": [],
+      "inferred": [],
+      "passthrough": null
+    },
+    "engines": null
   },
-  "packages": [
-    "@fixture/app"
-  ],
-  "envMode": "infer",
-  "frameworkInference": true,
   "execution": {
     "command": "turbo run build",
     "repoPath": "",
@@ -32,24 +26,29 @@
     "failed": 0,
     "cached": 0,
     "attempted": 1,
-    "startTime": 1784032364480,
-    "endTime": 1784032364681,
+    "startTime": 1784032364670,
+    "endTime": 1784032364889,
     "exitCode": 0
   },
+  "packages": [
+    "@fixture/app"
+  ],
+  "envMode": "strict",
+  "frameworkInference": true,
   "tasks": [
     {
       "taskId": "@fixture/app#build",
       "task": "build",
       "package": "@fixture/app",
-      "hash": "10b839256a175715",
+      "hash": "5095dd8cbbfdbb56",
       "inputs": {
-        ".turbo/turbo-build.log": "bc81504e859c9b43ac0772b2689bd4b17077e5ed",
+        ".turbo/turbo-build.log": "cf8ef8f66f19ae9356933d41aad76f23613a0a87",
         "build.mjs": "54aa40e517feebfa574d1da2ffe573f729c56baf",
         "dist/output.txt": "180b47c18ba7e484fc0d7350bc6cad8ec3423ea0",
         "input.txt": "5ea2ed416fbd4a4cbe227b75fe255dd7fa6bd4d6",
         "package.json": "54de1bc1eaffaee33fd58b9aca233490e55476e8"
       },
-      "hashOfExternalDependencies": "ccab0b28617f1f56",
+      "hashOfExternalDependencies": "459c029558afe716",
       "cache": {
         "local": false,
         "remote": false,
@@ -66,6 +65,7 @@
       "directory": "packages/app",
       "dependencies": [],
       "dependents": [],
+      "with": [],
       "resolvedTaskDefinition": {
         "outputs": [
           "dist/**"
@@ -73,9 +73,12 @@
         "cache": true,
         "dependsOn": [],
         "inputs": [],
-        "outputMode": "full",
+        "outputLogs": "full",
+        "persistent": false,
+        "interruptible": false,
         "env": [],
-        "persistent": false
+        "passThroughEnv": null,
+        "interactive": false
       },
       "expandedOutputs": [
         "packages/app/.turbo/turbo-build.log",
@@ -83,19 +86,19 @@
         "packages/app/dist/output.txt"
       ],
       "framework": "",
-      "envMode": "loose",
+      "envMode": "strict",
       "environmentVariables": {
+        "specified": {
+          "env": [],
+          "passThroughEnv": null
+        },
         "configured": [],
         "inferred": [],
-        "global": [
-          "VERCEL_ANALYTICS_ID="
-        ],
-        "passthrough": null,
-        "globalPassthrough": null
+        "passthrough": null
       },
       "execution": {
-        "startTime": 1784032364522,
-        "endTime": 1784032364681,
+        "startTime": 1784032364700,
+        "endTime": 1784032364889,
         "exitCode": 0
       }
     }
@@ -103,7 +106,7 @@
   "user": "",
   "scm": {
     "type": "git",
-    "sha": "",
-    "branch": ""
+    "sha": null,
+    "branch": null
   }
 }

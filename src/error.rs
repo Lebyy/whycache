@@ -10,8 +10,21 @@ pub enum Error {
     )]
     NoSummaries(PathBuf),
 
-    #[error("a previous summary is required; only {0} was found")]
-    NoBaseline(PathBuf),
+    #[error("{0} does not declare any tasks; pass a task name explicitly")]
+    NoConfiguredTasks(PathBuf),
+
+    #[error("task `{0}` was not present in the current run summary")]
+    TaskNotFound(String),
+
+    #[error("baseline and current summary resolve to the same file: {0}")]
+    SameSummary(PathBuf),
+
+    #[error("failed to parse task names from {path}: {source}")]
+    Config {
+        path: PathBuf,
+        #[source]
+        source: serde_json::Error,
+    },
 
     #[error("failed to read {path}: {source}")]
     Read {
@@ -61,7 +74,11 @@ pub enum Error {
 impl Error {
     pub fn exit_code(&self) -> i32 {
         match self {
-            Self::NoSummaries(_) | Self::NoBaseline(_) | Self::RepoNotFound(_) => 2,
+            Self::NoSummaries(_)
+            | Self::NoConfiguredTasks(_)
+            | Self::TaskNotFound(_)
+            | Self::SameSummary(_)
+            | Self::RepoNotFound(_) => 2,
             _ => 1,
         }
     }
