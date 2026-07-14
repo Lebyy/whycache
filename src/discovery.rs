@@ -225,7 +225,8 @@ fn configured_tasks(root: &Path) -> Result<Vec<String>> {
 }
 
 fn run_dry_summary(root: &Path, tasks: &[String]) -> Result<Vec<u8>> {
-    let (program, prefix) = turbo_program(root);
+    let lookup_root = absolute_lookup_root(root)?;
+    let (program, prefix) = turbo_program(&lookup_root);
     let command = format!("{} run <tasks> --dry=json", program.display());
     let output = Command::new(&program)
         .current_dir(root)
@@ -249,6 +250,14 @@ fn run_dry_summary(root: &Path, tasks: &[String]) -> Result<Vec<u8>> {
         });
     }
     Ok(output.stdout)
+}
+
+fn absolute_lookup_root(root: &Path) -> Result<PathBuf> {
+    if root.is_absolute() {
+        Ok(root.to_owned())
+    } else {
+        Ok(env::current_dir()?.join(root))
+    }
 }
 
 fn turbo_program(root: &Path) -> (PathBuf, Vec<PathBuf>) {
@@ -386,6 +395,13 @@ mod tests {
                 .join("bin")
                 .join("turbo.exe")
         );
+    }
+
+    #[test]
+    fn resolves_relative_lookup_roots_from_the_process_directory() {
+        let root = absolute_lookup_root(Path::new("tests/fixtures/canary")).unwrap();
+        assert!(root.is_absolute());
+        assert!(root.ends_with("tests/fixtures/canary"));
     }
 
     #[test]
